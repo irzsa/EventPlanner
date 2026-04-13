@@ -4,6 +4,7 @@ from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date
 from database import Base, engine, get_db, SessionLocal
 from datetime import date, timedelta
 from pydantic import BaseModel
+from typing import Optional
 
 class DBUser(Base):
     __tablename__ = "users"
@@ -280,3 +281,44 @@ def update_vendor_details(vendor_id: int, vendor_data: VendorUpdate, db: Session
     db.commit()
     
     return {"message": "Business details updated successfully!"}
+
+# Cancel a booking
+@app.delete("/bookings/{booking_id}")
+def cancel_booking(booking_id: int, db: Session = Depends(get_db)):
+    booking = db.query(DBBooking).filter(DBBooking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    db.delete(booking)
+    db.commit()
+    return {"message": "Booking cancelled successfully"}
+
+# Search for Vendors by Name and/or Location
+@app.get("/search/vendors")
+def search_vendors(name: Optional[str] = None, location: Optional[str] = None, db: Session = Depends(get_db)):
+    # 1. Start with a query for ALL vendors
+    query = db.query(DBVendor)
+    
+    # 2. If they typed a name, filter the query (ilike means case-insensitive!)
+    if name:
+        query = query.filter(DBVendor.name.ilike(f"%{name}%"))
+        
+    # 3. If they typed a location, filter it further
+    if location:
+        query = query.filter(DBVendor.location.ilike(f"%{location}%"))
+        
+    # 4. Execute the query
+    results = query.all()
+    
+    # 5. Format the results for Android
+    formatted_results = []
+    for v in results:
+        formatted_results.append({
+            "vendor_id": v.id,
+            "vendor_name": v.name,
+            "description": v.description,
+            "location": v.location,
+            "price_per_hour": v.price_per_hour
+        })
+        
+    return formatted_results

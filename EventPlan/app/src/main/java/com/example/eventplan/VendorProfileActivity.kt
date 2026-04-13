@@ -20,6 +20,19 @@ class VendorProfileActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_vendor_profile)
 
+        findViewById<Button>(R.id.btnLogout).setOnClickListener {
+            // 1. Wipe the vault
+            val sharedPreferences = getSharedPreferences("EventPlanPrefs", MODE_PRIVATE)
+            sharedPreferences.edit().clear().apply()
+
+            // 2. Teleport back to Login
+            val intent = Intent(this, MainActivity::class.java)
+            // This flag clears the backstack so they can't hit 'Back' to return to the profile
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
+        }
+
         val tvName = findViewById<TextView>(R.id.tvHubVendorName)
         val tvDetails = findViewById<TextView>(R.id.tvHubVendorDetails)
         val calendarView = findViewById<CalendarView>(R.id.calendarVendorHub)

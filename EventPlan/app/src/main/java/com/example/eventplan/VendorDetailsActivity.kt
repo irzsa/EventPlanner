@@ -32,6 +32,7 @@ class VendorDetailsActivity : AppCompatActivity() {
         val btnReveal = findViewById<Button>(R.id.btnRevealCalendar)
         val layoutBooking = findViewById<LinearLayout>(R.id.layoutBookingSection)
         val calendar = findViewById<CalendarView>(R.id.calendarClientBooking)
+        calendar.minDate = System.currentTimeMillis() - 1000
         val tvStatus = findViewById<TextView>(R.id.tvBookingStatus)
         val btnConfirm = findViewById<Button>(R.id.btnConfirmBooking)
 

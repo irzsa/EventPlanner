@@ -6,7 +6,10 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class ClientBookingAdapter(private val bookings: List<ClientBooking>) : RecyclerView.Adapter<ClientBookingAdapter.BookingViewHolder>() {
+class ClientBookingAdapter(
+    private val bookings: List<ClientBooking>,
+    private val onLongClick: (Int) -> Unit
+) : RecyclerView.Adapter<ClientBookingAdapter.BookingViewHolder>() {
 
     class BookingViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         // We are using Android's built-in 2-line list item
@@ -21,9 +24,14 @@ class ClientBookingAdapter(private val bookings: List<ClientBooking>) : Recycler
 
     override fun onBindViewHolder(holder: BookingViewHolder, position: Int) {
         val booking = bookings[position]
-        // Formats it like: "DJ Snake-Eyes on 2026-05-01"
         holder.tvVendorAndDate.text = "${booking.vendorName} on ${booking.bookedDate}"
         holder.tvLocation.text = "Location: ${booking.location}"
+
+        // THE NEW LOGIC: When they press and hold the item, trigger the delete!
+        holder.itemView.setOnLongClickListener {
+            onLongClick(booking.bookingId)
+            true // Tells Android we successfully handled the long click
+        }
     }
 
     override fun getItemCount() = bookings.size

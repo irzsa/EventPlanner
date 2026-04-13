@@ -2,10 +2,12 @@ package com.example.eventplan
 
 import retrofit2.Call
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface EventPlanApi {
 
@@ -43,4 +45,15 @@ interface EventPlanApi {
     // 9. Update User Profile (Client Name & Phone)
     @PUT("users/{user_id}")
     fun updateUserProfile(@Path("user_id") userId: Int, @Body request: UserUpdateRequest): Call<Any>
+
+    // 10. Cancel a Booking
+    @DELETE("bookings/{booking_id}")
+    fun cancelBooking(@Path("booking_id") bookingId: Int): Call<Any>
+
+    // 11. Search Vendors
+    @GET("search/vendors")
+    fun searchVendors(
+        @Query("name") name: String?,
+        @Query("location") location: String?
+    ): Call<List<VendorDashboardResponse>> // We can safely reuse the VendorDashboardResponse class!
 }

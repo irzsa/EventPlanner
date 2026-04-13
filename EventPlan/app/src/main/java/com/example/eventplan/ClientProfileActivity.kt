@@ -24,6 +24,19 @@ class ClientProfileActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        findViewById<Button>(R.id.btnLogout).setOnClickListener {
+            // 1. Wipe the vault
+            val sharedPreferences = getSharedPreferences("EventPlanPrefs", MODE_PRIVATE)
+            sharedPreferences.edit().clear().apply()
+
+            // 2. Teleport back to Login
+            val intent = Intent(this, MainActivity::class.java)
+            // This flag clears the backstack so they can't hit 'Back' to return to the profile
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
+        }
+
         val rvClientBookings = findViewById<RecyclerView>(R.id.rvClientBookings)
         rvClientBookings.layoutManager = LinearLayoutManager(this)
 
@@ -42,8 +55,33 @@ class ClientProfileActivity : AppCompatActivity() {
                         if (bookings.isEmpty()) {
                             Toast.makeText(this@ClientProfileActivity, "You have no bookings yet!", Toast.LENGTH_SHORT).show()
                         } else {
-                            // We will use a quick built-in adapter for now!
-                            rvClientBookings.adapter = ClientBookingAdapter(bookings)
+                            // We pass in the logic for the Long Click!
+                            rvClientBookings.adapter = ClientBookingAdapter(bookings) { bookingIdToDelete ->
+
+                                // --- THE NEW CONFIRMATION POP-UP ---
+                                android.app.AlertDialog.Builder(this@ClientProfileActivity)
+                                    .setTitle("Cancel Booking")
+                                    .setMessage("Are you sure you want to cancel this reservation? This cannot be undone.")
+                                    .setPositiveButton("Yes, Cancel") { _, _ ->
+
+                                        // If they click Yes, fire the DELETE request to Python!
+                                        RetrofitClient.instance.cancelBooking(bookingIdToDelete).enqueue(object : Callback<Any> {
+                                            override fun onResponse(call: Call<Any>, response: Response<Any>) {
+                                                if (response.isSuccessful) {
+                                                    Toast.makeText(this@ClientProfileActivity, "Booking Cancelled!", Toast.LENGTH_SHORT).show()
+                                                    recreate() // Refresh the screen
+                                                }
+                                            }
+                                            override fun onFailure(call: Call<Any>, t: Throwable) {
+                                                Toast.makeText(this@ClientProfileActivity, "Error canceling.", Toast.LENGTH_SHORT).show()
+                                            }
+                                        })
+
+                                    }
+                                    .setNegativeButton("No, Keep it", null) // Does nothing, just closes the box
+                                    .show()
+                                // -----------------------------------
+                            }
                         }
                     }
                 }
