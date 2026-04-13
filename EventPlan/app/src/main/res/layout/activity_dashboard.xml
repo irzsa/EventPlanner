@@ -14,9 +14,18 @@
         android:textStyle="bold"
         android:layout_marginBottom="16dp" />
 
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvCategories"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/btnProfile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="My Profile"
+        android:layout_gravity="end"
+        android:layout_marginBottom="16dp"/>
 
 </LinearLayout>

@@ -1,6 +1,8 @@
 package com.example.eventplan
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -13,6 +15,27 @@ class DashboardActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dashboard)
+
+        val btnProfile = findViewById<Button>(R.id.btnProfile)
+
+        btnProfile.setOnClickListener {
+            // 1. Open the vault
+            val sharedPreferences = getSharedPreferences("EventPlanPrefs", MODE_PRIVATE)
+
+            // 2. Read the role (default to "client" just in case it's missing)
+            val userRole = sharedPreferences.getString("ROLE", "client")
+
+            // 3. The Crossroad!
+            if (userRole == "vendor") {
+                Toast.makeText(this, "Opening Vendor Hub...", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this, VendorProfileActivity::class.java)
+                startActivity(intent)
+            } else {
+                Toast.makeText(this, "Opening Client Hub...", Toast.LENGTH_SHORT).show()
+                val intent = Intent(this, ClientProfileActivity::class.java)
+                startActivity(intent)
+            }
+        }
 
         val rvCategories = findViewById<RecyclerView>(R.id.rvCategories)
         rvCategories.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)

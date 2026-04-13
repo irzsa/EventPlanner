@@ -23,4 +23,7 @@ interface EventPlanApi {
     // 4. Create a new booking
     @POST("bookings")
     fun createBooking(@Body request: BookingRequest): Call<Any>
+
+    @POST("login")
+    fun login(@Body request: LoginRequest): Call<LoginResponse>
 }

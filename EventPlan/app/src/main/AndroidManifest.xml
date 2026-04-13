@@ -15,13 +15,19 @@
         android:theme="@style/Theme.EventPlan"
         android:usesCleartextTraffic="true">
         <activity
-            android:name=".VendorDetailsActivity"
-            android:parentActivityName=".VendorListActivity"
+            android:name=".ClientProfileActivity"
             android:exported="false" />
         <activity
-            android:name=".VendorListActivity"
-            android:parentActivityName=".DashboardActivity"
+            android:name=".VendorProfileActivity"
             android:exported="false" />
+        <activity
+            android:name=".VendorDetailsActivity"
+            android:exported="false"
+            android:parentActivityName=".VendorListActivity" />
+        <activity
+            android:name=".VendorListActivity"
+            android:exported="false"
+            android:parentActivityName=".DashboardActivity" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
