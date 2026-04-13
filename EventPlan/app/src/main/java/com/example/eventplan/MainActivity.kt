@@ -19,6 +19,11 @@ class MainActivity : AppCompatActivity() {
         val etEmail = findViewById<EditText>(R.id.etEmail)
         val etPassword = findViewById<EditText>(R.id.etPassword)
         val btnLogin = findViewById<Button>(R.id.btnLogin)
+        val tvRegister = findViewById<android.widget.TextView>(R.id.tvGoToRegister)
+        tvRegister.setOnClickListener {
+            val intent = android.content.Intent(this, RegisterActivity::class.java)
+            startActivity(intent)
+        }
 
         btnLogin.setOnClickListener {
             val username = etEmail.text.toString().trim()
@@ -50,7 +55,7 @@ class MainActivity : AppCompatActivity() {
                         editor.apply() // Save it!
                         // -------------------------------------
 
-                        Toast.makeText(this@MainActivity, "Welcome, ${loginReply.role}!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Welcome, ${loginReply.fullName}!", Toast.LENGTH_SHORT).show()
 
                         // Teleport to the Dashboard
                         val intent = Intent(this@MainActivity, DashboardActivity::class.java)

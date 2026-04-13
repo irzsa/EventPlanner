@@ -5,6 +5,7 @@ from database import Base, engine, get_db, SessionLocal
 from datetime import date, timedelta
 from pydantic import BaseModel
 from typing import Optional
+from passlib.context import CryptContext
 
 class DBUser(Base):
     __tablename__ = "users"
@@ -34,6 +35,8 @@ class DBVendor(Base):
     description = Column(String)
     price_per_hour = Column(Float)
     location = Column(String) 
+    image_url = Column(String, nullable=True) # Their main profile picture link
+    social_link = Column(String, nullable=True) # NEW: Instagram/Website link!
     
     category_id = Column(Integer, ForeignKey("categories.id"))
     category = relationship("DBCategory", back_populates="vendors")
@@ -74,11 +77,31 @@ class VendorUpdate(BaseModel):
     description: str
     price_per_hour: float
     location: str
+    image_url: Optional[str] = None   
+    social_link: Optional[str] = None 
+
+class UserRegister(BaseModel):
+    username: str
+    password: str
+    role: str # "client" or "vendor"
+    full_name: str
+    phone_number: str
 
 # 2. Tell SQLAlchemy to actually create this table in Postgres
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="EventPlan API")
+
+# Create the encryption engine
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password: str):
+    """Turns 'password123' into '$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36..."""
+    return pwd_context.hash(password)
+
+def verify_password(plain_password: str, hashed_password: str):
+    """Checks if the typed password matches the scrambled database hash"""
+    return pwd_context.verify(plain_password, hashed_password)
 
 # 3. A quick helper function to "seed" the database with initial data
 def seed_database():
@@ -86,8 +109,8 @@ def seed_database():
     # Check if users are empty
     if db.query(DBUser).count() == 0:
         # 1. Create Test Users
-        test_client = DBUser(username="client1", password="password123", role="client", full_name="John Doe", phone_number="555-0199")
-        test_vendor = DBUser(username="dj_snake", password="password123", role="vendor", full_name="Sam Smith", phone_number="555-0888")
+        test_client = DBUser(username="client1", password=get_password_hash("password123"), role="client", full_name="John Doe", phone_number="555-0199")
+        test_vendor = DBUser(username="dj_snake", password=get_password_hash("password123"), role="vendor", full_name="Sam Smith", phone_number="555-0888")
         db.add_all([test_client, test_vendor])
         db.commit()
 
@@ -183,20 +206,18 @@ def create_booking(booking: BookingCreate, db: Session = Depends(get_db)):
 @app.post("/login")
 def login(user_data: UserLogin, db: Session = Depends(get_db)):
     # Look for the user in the database
-    user = db.query(DBUser).filter(
-        DBUser.username == user_data.username, 
-        DBUser.password == user_data.password
-    ).first()
+    user = db.query(DBUser).filter(DBUser.username == user_data.username).first()
     
     # If they don't exist, kick them out
-    if not user:
+    if not user or not verify_password(user_data.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     # If they do exist, return their ID and Role so Android can save it!
     return {
         "message": "Login successful!", 
         "user_id": user.id, 
-        "role": user.role
+        "role": user.role,
+        "full_name": user.full_name
     }
 # Get a client's itinerary
 @app.get("/clients/{client_id}/bookings")
@@ -241,6 +262,9 @@ def get_vendor_dashboard(user_id: int, db: Session = Depends(get_db)):
         "vendor_name": vendor.name,
         "price_per_hour": vendor.price_per_hour,
         "location": vendor.location,
+        "description": vendor.description,  # ADD THIS
+        "image_url": vendor.image_url,      # ADD THIS
+        "social_link": vendor.social_link,  # ADD THIS
         "bookings": bookings_list
     }
 
@@ -265,21 +289,18 @@ def update_user_profile(user_id: int, profile_data: UserUpdate, db: Session = De
 # Update Vendor Business Details
 @app.put("/vendors/{vendor_id}")
 def update_vendor_details(vendor_id: int, vendor_data: VendorUpdate, db: Session = Depends(get_db)):
-    # 1. Find the vendor profile
     vendor = db.query(DBVendor).filter(DBVendor.id == vendor_id).first()
-    
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
         
-    # 2. Update their business data
     vendor.name = vendor_data.name
     vendor.description = vendor_data.description
     vendor.price_per_hour = vendor_data.price_per_hour
     vendor.location = vendor_data.location
+    vendor.image_url = vendor_data.image_url     # NEW
+    vendor.social_link = vendor_data.social_link # NEW
     
-    # 3. Save to Postgres
     db.commit()
-    
     return {"message": "Business details updated successfully!"}
 
 # Cancel a booking
@@ -318,7 +339,78 @@ def search_vendors(name: Optional[str] = None, location: Optional[str] = None, d
             "vendor_name": v.name,
             "description": v.description,
             "location": v.location,
-            "price_per_hour": v.price_per_hour
+            "price_per_hour": v.price_per_hour,
+            "image_url": v.image_url, 
+            "social_link": v.social_link
         })
         
     return formatted_results
+
+# Create a new Account
+@app.post("/register")
+def register_user(user_data: UserRegister, db: Session = Depends(get_db)):
+    # 1. Check if the username is already taken
+    existing_user = db.query(DBUser).filter(DBUser.username == user_data.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists!")
+
+    hashed_pw = get_password_hash(user_data.password)
+
+    # 2. Create the User
+    new_user = DBUser(
+        username=user_data.username, 
+        password=hashed_pw, 
+        role=user_data.role, 
+        full_name=user_data.full_name, 
+        phone_number=user_data.phone_number
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user) # This grabs their newly generated ID!
+
+    # 3. IF they are a vendor, give them a blank storefront instantly!
+    if new_user.role == "vendor":
+        blank_vendor = DBVendor(
+            name=f"{new_user.full_name}'s Business", 
+            description="Edit your profile to add details!", 
+            price_per_hour=0.0, 
+            location="TBD", 
+            image_url=None,       # They can add this later!
+            social_link=None,     # They can add this later!
+            owner_id=new_user.id
+        )
+        db.add(blank_vendor)
+        db.commit()
+
+    return {"message": "Account created successfully!"}
+
+# Get a User's Profile (Name & Phone)
+@app.get("/users/{user_id}")
+def get_user_profile(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    return {
+        "full_name": user.full_name,
+        "phone_number": user.phone_number
+    }
+
+@app.get("/vendors/featured")
+def get_featured_vendors(db: Session = Depends(get_db)):
+    # Grab the 5 most recent vendors
+    featured = db.query(DBVendor).order_by(DBVendor.id.desc()).limit(5).all()
+    
+    # Format them so Android can read them easily
+    results = []
+    for v in featured:
+        results.append({
+            "vendor_id": v.id,
+            "vendor_name": v.name,
+            "description": v.description,
+            "location": v.location,
+            "price_per_hour": v.price_per_hour,
+            "image_url": v.image_url,
+            "social_link": v.social_link
+        })
+    return results

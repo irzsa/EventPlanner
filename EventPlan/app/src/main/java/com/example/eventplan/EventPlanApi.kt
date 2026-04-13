@@ -56,4 +56,15 @@ interface EventPlanApi {
         @Query("name") name: String?,
         @Query("location") location: String?
     ): Call<List<VendorDashboardResponse>> // We can safely reuse the VendorDashboardResponse class!
+
+    // 12. Register a New Account
+    @POST("register")
+    fun registerUser(@Body request: RegisterRequest): Call<Any>
+
+    // 13. Get User Profile
+    @GET("users/{user_id}")
+    fun getUserProfile(@Path("user_id") userId: Int): Call<UserProfileResponse>
+
+    @GET("vendors/featured")
+    fun getFeaturedVendors(): Call<List<VendorDashboardResponse>>
 }

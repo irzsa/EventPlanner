@@ -42,6 +42,22 @@
         android:hint="Location"
         android:layout_marginBottom="32dp"/>
 
+    <EditText
+        android:id="@+id/etEditVendorImage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Profile Picture URL (Optional)"
+        android:inputType="textUri"
+        android:layout_marginBottom="16dp"/>
+
+    <EditText
+        android:id="@+id/etEditVendorSocial"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Instagram / Website Link (Optional)"
+        android:inputType="textUri"
+        android:layout_marginBottom="32dp"/>
+
     <Button
         android:id="@+id/btnSaveVendorDetails"
         android:layout_width="match_parent"

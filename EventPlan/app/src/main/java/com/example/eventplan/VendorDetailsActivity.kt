@@ -4,10 +4,12 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.CalendarView
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -28,6 +30,21 @@ class VendorDetailsActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvDetailName).text = intent.getStringExtra("VENDOR_NAME")
         findViewById<TextView>(R.id.tvDetailLocPrice).text = "${intent.getStringExtra("VENDOR_LOC")}  •  $${intent.getDoubleExtra("VENDOR_PRICE", 0.0)}/hr"
         findViewById<TextView>(R.id.tvDetailDesc).text = intent.getStringExtra("VENDOR_DESC")
+
+        // Find our new ImageView
+        val ivPic = findViewById<ImageView>(R.id.ivDetailVendorPic)
+
+        // Catch the URL from the teleporter
+        val imageUrl = intent.getStringExtra("VENDOR_IMAGE")
+
+        // Let Glide paint the picture!
+        if (!imageUrl.isNullOrEmpty()) {
+            Glide.with(this)
+                .load(imageUrl)
+                .circleCrop() // <-- This automatically makes it a perfect circle!
+                .error(android.R.drawable.ic_dialog_alert)
+                .into(ivPic)
+        }
 
         val btnReveal = findViewById<Button>(R.id.btnRevealCalendar)
         val layoutBooking = findViewById<LinearLayout>(R.id.layoutBookingSection)

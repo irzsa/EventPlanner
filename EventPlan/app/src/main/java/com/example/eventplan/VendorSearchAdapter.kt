@@ -4,19 +4,23 @@ import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 
 class VendorSearchAdapter(private val vendors: List<VendorDashboardResponse>) : RecyclerView.Adapter<VendorSearchAdapter.SearchViewHolder>() {
 
     class SearchViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvName: TextView = view.findViewById(android.R.id.text1)
-        val tvDetails: TextView = view.findViewById(android.R.id.text2)
+        // We match these IDs to the ones we just made in item_vendor_card.xml!
+        val tvName: TextView = view.findViewById(R.id.tvVendorCardName)
+        val tvDetails: TextView = view.findViewById(R.id.tvVendorCardDetails)
+        val ivPic: ImageView = view.findViewById(R.id.ivVendorPic)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchViewHolder {
-        // Using Android's built-in 2-line list item again for speed!
-        val view = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_2, parent, false)
+        // Here we inflate our brand new card layout!
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_vendor_card, parent, false)
         return SearchViewHolder(view)
     }
 
@@ -25,7 +29,22 @@ class VendorSearchAdapter(private val vendors: List<VendorDashboardResponse>) : 
         holder.tvName.text = vendor.vendorName
         holder.tvDetails.text = "${vendor.location}  •  $${vendor.pricePerHour}/hr"
 
-        // When they click a search result, teleport them to the Details/Booking screen!
+        // PRINT THE URL TO THE CONSOLE!
+        println("🚨🚨🚨 DEBUG: The image URL for ${vendor.vendorName} is: ${vendor.imageUrl}")
+
+        // Let Glide magically load the image URL into the circle!
+        if (!vendor.imageUrl.isNullOrEmpty()) {
+            Glide.with(holder.itemView.context)
+                .load(vendor.imageUrl)
+                .centerCrop()
+                .error(android.R.drawable.ic_dialog_alert)
+                .into(holder.ivPic)
+        } else {
+            // If they have no picture yet, just clear it so it shows the grey background
+            holder.ivPic.setImageDrawable(null)
+        }
+
+        // The Click Listener (Same as before)
         holder.itemView.setOnClickListener {
             val context = holder.itemView.context
             val intent = Intent(context, VendorDetailsActivity::class.java).apply {
@@ -33,8 +52,8 @@ class VendorSearchAdapter(private val vendors: List<VendorDashboardResponse>) : 
                 putExtra("VENDOR_NAME", vendor.vendorName)
                 putExtra("VENDOR_PRICE", vendor.pricePerHour)
                 putExtra("VENDOR_LOC", vendor.location)
-                // If description is null, just pass an empty string
                 putExtra("VENDOR_DESC", "Check out my profile to book!")
+                putExtra("VENDOR_IMAGE", vendor.imageUrl)
             }
             context.startActivity(intent)
         }

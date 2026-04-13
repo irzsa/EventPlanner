@@ -15,6 +15,9 @@
         android:theme="@style/Theme.EventPlan"
         android:usesCleartextTraffic="true">
         <activity
+            android:name=".RegisterActivity"
+            android:exported="false" />
+        <activity
             android:name=".EditClientActivity"
             android:exported="false" />
         <activity

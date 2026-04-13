@@ -2,7 +2,10 @@ package com.example.eventplan
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -18,63 +21,84 @@ class DashboardActivity : AppCompatActivity() {
 
         val btnProfile = findViewById<Button>(R.id.btnProfile)
 
-        btnProfile.setOnClickListener {
-            // 1. Open the vault
-            val sharedPreferences = getSharedPreferences("EventPlanPrefs", MODE_PRIVATE)
+        // 1. Find the Featured UI elements
+        val rvFeatured = findViewById<RecyclerView>(R.id.rvFeaturedVendors)
+        val tvFeaturedLabel = findViewById<TextView>(R.id.tvFeaturedLabel)
 
-            // 2. Read the role (default to "client" just in case it's missing)
+        // Find our other UI elements
+        val etSearchName = findViewById<EditText>(R.id.etSearchName)
+        val etSearchLocation = findViewById<EditText>(R.id.etSearchLocation)
+        val rvCategories = findViewById<RecyclerView>(R.id.rvCategories)
+        val rvSearchResults = findViewById<RecyclerView>(R.id.rvSearchResults)
+
+        rvSearchResults.layoutManager = LinearLayoutManager(this)
+
+        // Load Featured Vendors
+        RetrofitClient.instance.getFeaturedVendors().enqueue(object : Callback<List<VendorDashboardResponse>> {
+            override fun onResponse(call: Call<List<VendorDashboardResponse>>, response: Response<List<VendorDashboardResponse>>) {
+                if (response.isSuccessful && response.body() != null) {
+                    rvFeatured.adapter = FeaturedVendorAdapter(response.body()!!)
+                    rvFeatured.visibility = View.VISIBLE
+                    tvFeaturedLabel.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onFailure(call: Call<List<VendorDashboardResponse>>, t: Throwable) {
+                rvFeatured.visibility = View.GONE
+                tvFeaturedLabel.visibility = View.GONE
+            }
+        })
+
+        // Profile Button Logic
+        btnProfile.setOnClickListener {
+            val sharedPreferences = getSharedPreferences("EventPlanPrefs", MODE_PRIVATE)
             val userRole = sharedPreferences.getString("ROLE", "client")
 
-            // 3. The Crossroad!
             if (userRole == "vendor") {
-                Toast.makeText(this, "Opening Vendor Hub...", Toast.LENGTH_SHORT).show()
                 val intent = Intent(this, VendorProfileActivity::class.java)
                 startActivity(intent)
             } else {
-                Toast.makeText(this, "Opening Client Hub...", Toast.LENGTH_SHORT).show()
                 val intent = Intent(this, ClientProfileActivity::class.java)
                 startActivity(intent)
             }
         }
 
-        // Find our new UI elements
-        val etSearchName = findViewById<android.widget.EditText>(R.id.etSearchName)
-        val etSearchLocation = findViewById<android.widget.EditText>(R.id.etSearchLocation)
-        val rvCategories = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvCategories)
-        val rvSearchResults = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.rvSearchResults)
-
-        rvSearchResults.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
-
-        // This is the function that talks to Python
+        // --- THE HIDE & SEEK SEARCH LOGIC ---
         fun performSearch() {
             val queryName = etSearchName.text.toString().trim()
             val queryLoc = etSearchLocation.text.toString().trim()
 
-            // If BOTH boxes are empty, hide the search results and bring back the Categories!
+            // If BOTH boxes are empty, bring back the Categories AND Featured Vendors!
             if (queryName.isEmpty() && queryLoc.isEmpty()) {
-                rvSearchResults.visibility = android.view.View.GONE
-                rvCategories.visibility = android.view.View.VISIBLE
+                rvSearchResults.visibility = View.GONE
+                rvCategories.visibility = View.VISIBLE
+
+                // Show Featured
+                rvFeatured.visibility = View.VISIBLE
+                tvFeaturedLabel.visibility = View.VISIBLE
                 return
             }
 
-            // Otherwise, hide Categories, show Results, and call Python!
-            rvCategories.visibility = android.view.View.GONE
-            rvSearchResults.visibility = android.view.View.VISIBLE
+            // Otherwise, they are searching: Hide Categories and Featured, Show Results!
+            rvCategories.visibility = View.GONE
 
-            // Because our Python endpoint made them Optional, we send null if the box is empty
+            // Hide Featured
+            rvFeatured.visibility = View.GONE
+            tvFeaturedLabel.visibility = View.GONE
+
+            // Show Results
+            rvSearchResults.visibility = View.VISIBLE
+
             val apiName = if (queryName.isNotEmpty()) queryName else null
             val apiLoc = if (queryLoc.isNotEmpty()) queryLoc else null
 
-            RetrofitClient.instance.searchVendors(apiName, apiLoc).enqueue(object : retrofit2.Callback<List<VendorDashboardResponse>> {
-                override fun onResponse(call: retrofit2.Call<List<VendorDashboardResponse>>, response: retrofit2.Response<List<VendorDashboardResponse>>) {
+            RetrofitClient.instance.searchVendors(apiName, apiLoc).enqueue(object : Callback<List<VendorDashboardResponse>> {
+                override fun onResponse(call: Call<List<VendorDashboardResponse>>, response: Response<List<VendorDashboardResponse>>) {
                     if (response.isSuccessful && response.body() != null) {
-                        // Put the results in our new Adapter
                         rvSearchResults.adapter = VendorSearchAdapter(response.body()!!)
                     }
                 }
-                override fun onFailure(call: retrofit2.Call<List<VendorDashboardResponse>>, t: Throwable) {
-                    // Fail silently so it doesn't spam the user with error toasts while typing
-                }
+                override fun onFailure(call: Call<List<VendorDashboardResponse>>, t: Throwable) {}
             })
         }
 
@@ -83,34 +107,22 @@ class DashboardActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
 
-            // This runs the moment they finish pressing a key!
             override fun afterTextChanged(s: android.text.Editable?) {
                 performSearch()
             }
         }
 
-        // Attach the listener to both boxes
         etSearchName.addTextChangedListener(textWatcher)
         etSearchLocation.addTextChangedListener(textWatcher)
 
+        // Load Categories
         rvCategories.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-
-        // Make the network call to your Python server!
         RetrofitClient.instance.getCategories().enqueue(object : Callback<List<Category>> {
-
-            // If the server responds successfully
             override fun onResponse(call: Call<List<Category>>, response: Response<List<Category>>) {
                 if (response.isSuccessful && response.body() != null) {
-                    val realCategories = response.body()!!
-
-                    // We need to extract just the names (Strings) to pass to your existing Adapter
-
-                    // Attach the adapter with the REAL data
-                    rvCategories.adapter = CategoryAdapter(realCategories)
+                    rvCategories.adapter = CategoryAdapter(response.body()!!)
                 }
             }
-
-            // If the server is down or the IP is wrong
             override fun onFailure(call: Call<List<Category>>, t: Throwable) {
                 Toast.makeText(this@DashboardActivity, "Failed to load: ${t.message}", Toast.LENGTH_LONG).show()
             }

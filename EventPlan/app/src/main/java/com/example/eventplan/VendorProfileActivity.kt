@@ -13,99 +13,104 @@ import retrofit2.Response
 
 class VendorProfileActivity : AppCompatActivity() {
 
-    // We store the bookings up here so the calendar clicker can access them later!
     private var vendorBookings: List<VendorHubBooking> = emptyList()
+    // We store this globally so the "Edit" button can always grab the LATEST data
+    private var currentDashboard: VendorDashboardResponse? = null
+
+    // We define our views at the class level so we can use them in multiple functions
+    private lateinit var tvName: TextView
+    private lateinit var tvDetails: TextView
+    private lateinit var tvStatus: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_vendor_profile)
 
-        findViewById<Button>(R.id.btnLogout).setOnClickListener {
-            // 1. Wipe the vault
+        // 1. Initialize Views
+        tvName = findViewById(R.id.tvHubVendorName)
+        tvDetails = findViewById(R.id.tvHubVendorDetails)
+        tvStatus = findViewById(R.id.tvSelectedDateStatus)
+        val calendarView = findViewById<CalendarView>(R.id.calendarVendorHub)
+        val btnEdit = findViewById<Button>(R.id.btnEditVendorProfile)
+        val btnLogout = findViewById<Button>(R.id.btnLogout)
+
+        // 2. Logout Logic (Stays in onCreate)
+        btnLogout.setOnClickListener {
             val sharedPreferences = getSharedPreferences("EventPlanPrefs", MODE_PRIVATE)
             sharedPreferences.edit().clear().apply()
-
-            // 2. Teleport back to Login
             val intent = Intent(this, MainActivity::class.java)
-            // This flag clears the backstack so they can't hit 'Back' to return to the profile
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
         }
 
-        val tvName = findViewById<TextView>(R.id.tvHubVendorName)
-        val tvDetails = findViewById<TextView>(R.id.tvHubVendorDetails)
-        val calendarView = findViewById<CalendarView>(R.id.calendarVendorHub)
-        val tvStatus = findViewById<TextView>(R.id.tvSelectedDateStatus)
+        // 3. Edit Button Logic
+        btnEdit.setOnClickListener {
+            currentDashboard?.let { dashboard ->
+                println("CHECKING HUB DATA: Desc=${dashboard.description}, Image=${dashboard.imageUrl}")
+                val intent = Intent(this@VendorProfileActivity, EditVendorActivity::class.java).apply {
+                    putExtra("VENDOR_ID", dashboard.vendorId)
+                    putExtra("VENDOR_NAME", dashboard.vendorName)
+                    putExtra("VENDOR_PRICE", dashboard.pricePerHour)
+                    putExtra("VENDOR_LOC", dashboard.location)
+                    putExtra("VENDOR_DESC", dashboard.description)
+                    putExtra("VENDOR_IMAGE", dashboard.imageUrl)
+                    putExtra("VENDOR_SOCIAL", dashboard.socialLink)
+                }
+                startActivity(intent)
+            } ?: Toast.makeText(this, "Data still loading...", Toast.LENGTH_SHORT).show()
+        }
 
-        // 1. Who is holding the phone?
+        // 4. Calendar Logic (Stays in onCreate)
+        calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
+            val realMonth = month + 1
+            val clickedDate = String.format("%04d-%02d-%02d", year, realMonth, dayOfMonth)
+            val foundBooking = vendorBookings.find { it.bookedDate == clickedDate }
+
+            if (foundBooking != null) {
+                tvStatus.text = "🚨 BOOKED\nClient: @${foundBooking.clientUsername}"
+                tvStatus.setBackgroundColor(android.graphics.Color.parseColor("#FFCDD2"))
+                tvStatus.setTextColor(android.graphics.Color.parseColor("#B71C1C"))
+            } else {
+                tvStatus.text = "✅ AVAILABLE\nNo bookings for this date."
+                tvStatus.setBackgroundColor(android.graphics.Color.parseColor("#C8E6C9"))
+                tvStatus.setTextColor(android.graphics.Color.parseColor("#1B5E20"))
+            }
+        }
+    }
+
+    // --- THE MAGIC REFRESH PART ---
+
+    override fun onResume() {
+        super.onResume()
+        // Every time the user comes back to this screen, we ask Python for fresh data!
+        refreshDashboard()
+    }
+
+    private fun refreshDashboard() {
         val sharedPreferences = getSharedPreferences("EventPlanPrefs", MODE_PRIVATE)
         val userId = sharedPreferences.getInt("USER_ID", -1)
 
         if (userId != -1) {
-            // 2. Ask Python for the Master Dashboard
             RetrofitClient.instance.getVendorDashboard(userId).enqueue(object : Callback<VendorDashboardResponse> {
-
                 override fun onResponse(call: Call<VendorDashboardResponse>, response: Response<VendorDashboardResponse>) {
                     if (response.isSuccessful && response.body() != null) {
-                        val dashboard = response.body()!!
+                        // Store the NEW data globally
+                        currentDashboard = response.body()
 
-                        // Paint the business info on the screen
-                        tvName.text = dashboard.vendorName
-                        tvDetails.text = "${dashboard.location}  •  $${dashboard.pricePerHour}/hr"
-
-                        // Save the bookings silently in the background
-                        vendorBookings = dashboard.bookings
-
-                        val btnEdit = findViewById<Button>(R.id.btnEditVendorProfile)
-                        btnEdit.setOnClickListener {
-                            val intent = Intent(
-                                this@VendorProfileActivity,
-                                EditVendorActivity::class.java
-                            ).apply {
-                                putExtra("VENDOR_ID", dashboard.vendorId)
-                                putExtra("VENDOR_NAME", dashboard.vendorName)
-                                putExtra("VENDOR_PRICE", dashboard.pricePerHour)
-                                putExtra("VENDOR_LOC", dashboard.location)
-                            }
-                            startActivity(intent)
-                        }
-
+                        // Update the screen text
+                        tvName.text = currentDashboard!!.vendorName
+                        tvDetails.text = "${currentDashboard!!.location}  •  $${currentDashboard!!.pricePerHour}/hr"
+                        vendorBookings = currentDashboard!!.bookings
                     } else {
-                        tvName.text = "Vendor profile not found!"
+                        tvName.text = "Profile Error"
                     }
                 }
 
                 override fun onFailure(call: Call<VendorDashboardResponse>, t: Throwable) {
-                    Toast.makeText(this@VendorProfileActivity, "Network Error: ${t.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@VendorProfileActivity, "Refresh Failed", Toast.LENGTH_SHORT).show()
                 }
             })
-        }
-
-        // 3. The Magic Calendar Clicker
-        calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
-
-            // Fix Android's weird 0-indexed months
-            val realMonth = month + 1
-
-            // Format the clicked date to match Python perfectly (e.g., "2026-05-09")
-            // The %02d forces single digits to have a leading zero (5 becomes 05)
-            val clickedDate = String.format("%04d-%02d-%02d", year, realMonth, dayOfMonth)
-
-            // Search our background list of bookings to see if this date is taken
-            val foundBooking = vendorBookings.find { it.bookedDate == clickedDate }
-
-            if (foundBooking != null) {
-                // IT'S BOOKED! Turn the box red and show the client.
-                tvStatus.text = "🚨 BOOKED\nClient: @${foundBooking.clientUsername}"
-                tvStatus.setBackgroundColor(android.graphics.Color.parseColor("#FFCDD2")) // Light Red
-                tvStatus.setTextColor(android.graphics.Color.parseColor("#B71C1C")) // Dark Red
-            } else {
-                // IT'S FREE! Turn the box green.
-                tvStatus.text = "✅ AVAILABLE\nNo bookings for this date."
-                tvStatus.setBackgroundColor(android.graphics.Color.parseColor("#C8E6C9")) // Light Green
-                tvStatus.setTextColor(android.graphics.Color.parseColor("#1B5E20")) // Dark Green
-            }
         }
     }
 }
