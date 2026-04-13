@@ -26,10 +26,9 @@ class DashboardActivity : AppCompatActivity() {
                     val realCategories = response.body()!!
 
                     // We need to extract just the names (Strings) to pass to your existing Adapter
-                    val categoryNames = realCategories.map { it.name }
 
                     // Attach the adapter with the REAL data
-                    rvCategories.adapter = CategoryAdapter(categoryNames)
+                    rvCategories.adapter = CategoryAdapter(realCategories)
                 }
             }
 
