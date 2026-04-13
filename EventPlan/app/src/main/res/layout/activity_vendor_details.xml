@@ -29,11 +29,45 @@
         android:layout_marginBottom="32dp"/>
 
     <Button
-        android:id="@+id/btnBookCalendar"
+        android:id="@+id/btnRevealCalendar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="View Calendar &amp; Book"
+        android:text="Check Availability &amp; Book"
         android:textSize="18sp"
         android:padding="16dp"/>
+
+    <LinearLayout
+        android:id="@+id/layoutBookingSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:layout_marginTop="16dp">
+
+        <CalendarView
+            android:id="@+id/calendarClientBooking"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#F5F5F5"/>
+
+        <TextView
+            android:id="@+id/tvBookingStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select a date."
+            android:textSize="16sp"
+            android:padding="8dp"
+            android:textAlignment="center"
+            android:layout_marginTop="8dp"/>
+
+        <Button
+            android:id="@+id/btnConfirmBooking"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Confirm Booking"
+            android:backgroundTint="#4CAF50"
+            android:enabled="false"
+            android:layout_marginTop="8dp"/>
+    </LinearLayout>
 
 </LinearLayout>

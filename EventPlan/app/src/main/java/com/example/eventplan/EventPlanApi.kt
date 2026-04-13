@@ -4,6 +4,7 @@ import retrofit2.Call
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 
 interface EventPlanApi {
@@ -26,4 +27,20 @@ interface EventPlanApi {
 
     @POST("login")
     fun login(@Body request: LoginRequest): Call<LoginResponse>
+
+    // 6. Get Client's Bookings
+    @GET("clients/{client_id}/bookings")
+    fun getClientBookings(@Path("client_id") clientId: Int): Call<List<ClientBooking>>
+
+    // 7. Get Vendor's Master Dashboard
+    @GET("users/{user_id}/vendor-dashboard")
+    fun getVendorDashboard(@Path("user_id") userId: Int): Call<VendorDashboardResponse>
+
+    // 8. Update Vendor Business Details
+    @PUT("vendors/{vendor_id}")
+    fun updateVendorDetails(@Path("vendor_id") vendorId: Int, @Body request: VendorUpdateRequest): Call<Any>
+
+    // 9. Update User Profile (Client Name & Phone)
+    @PUT("users/{user_id}")
+    fun updateUserProfile(@Path("user_id") userId: Int, @Body request: UserUpdateRequest): Call<Any>
 }

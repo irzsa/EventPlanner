@@ -15,6 +15,13 @@
         android:theme="@style/Theme.EventPlan"
         android:usesCleartextTraffic="true">
         <activity
+            android:name=".EditClientActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EditVendorActivity"
+            android:exported="false"
+            android:parentActivityName=".VendorProfileActivity" />
+        <activity
             android:name=".ClientProfileActivity"
             android:exported="false" />
         <activity

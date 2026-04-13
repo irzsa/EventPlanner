@@ -24,8 +24,8 @@
         android:id="@+id/btnProfile"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="My Profile"
         android:layout_gravity="end"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="16dp"
+        android:text="My Profile" />
 
 </LinearLayout>

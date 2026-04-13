@@ -11,6 +11,8 @@ class DBUser(Base):
     username = Column(String, unique=True, index=True)
     password = Column(String) # We will use plain text for now to keep it simple!
     role = Column(String) # Will be either "client" or "vendor"
+    full_name = Column(String, nullable=True)
+    phone_number = Column(String, nullable=True)
 
     # Links to what this user owns/does
     owned_vendors = relationship("DBVendor", back_populates="owner")
@@ -62,6 +64,16 @@ class UserLogin(BaseModel):
     username: str
     password: str
 
+class UserUpdate(BaseModel):
+    full_name: str
+    phone_number: str
+
+class VendorUpdate(BaseModel):
+    name: str
+    description: str
+    price_per_hour: float
+    location: str
+
 # 2. Tell SQLAlchemy to actually create this table in Postgres
 Base.metadata.create_all(bind=engine)
 
@@ -73,10 +85,10 @@ def seed_database():
     # Check if users are empty
     if db.query(DBUser).count() == 0:
         # 1. Create Test Users
-        test_client = DBUser(username="client1", password="client1", role="client")
-        test_vendor = DBUser(username="dj_snake", password="vendor1", role="vendor")
+        test_client = DBUser(username="client1", password="password123", role="client", full_name="John Doe", phone_number="555-0199")
+        test_vendor = DBUser(username="dj_snake", password="password123", role="vendor", full_name="Sam Smith", phone_number="555-0888")
         db.add_all([test_client, test_vendor])
-        db.commit() # Save to get their IDs
+        db.commit()
 
         # 2. Create Categories
         venues_cat = DBCategory(name="Venues")
@@ -185,3 +197,86 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
         "user_id": user.id, 
         "role": user.role
     }
+# Get a client's itinerary
+@app.get("/clients/{client_id}/bookings")
+def get_client_bookings(client_id: int, db: Session = Depends(get_db)):
+    # Find all bookings belonging to this client
+    bookings = db.query(DBBooking).filter(DBBooking.client_id == client_id).all()
+    
+    # We will format the response into a clean list so Android can easily read it
+    itinerary = []
+    for b in bookings:
+        itinerary.append({
+            "booking_id": b.id,
+            "booked_date": b.booked_date.isoformat(),
+            "vendor_name": b.vendor.name,
+            "location": b.vendor.location
+        })
+        
+    return itinerary
+
+# Get a Vendor's Master Dashboard
+@app.get("/users/{user_id}/vendor-dashboard")
+def get_vendor_dashboard(user_id: int, db: Session = Depends(get_db)):
+    # 1. Find the vendor profile owned by this user
+    vendor = db.query(DBVendor).filter(DBVendor.owner_id == user_id).first()
+    
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor profile not found for this user")
+
+    # 2. Grab all their bookings and format them
+    bookings_list = []
+    for b in vendor.bookings:
+        bookings_list.append({
+            "booking_id": b.id,
+            "booked_date": b.booked_date.isoformat(),
+            # Because we linked DBUser, we can grab the client's username!
+            "client_username": b.client.username if b.client else "Unknown Client"
+        })
+
+    # 3. Send it all back as one neat package
+    return {
+        "vendor_id": vendor.id,
+        "vendor_name": vendor.name,
+        "price_per_hour": vendor.price_per_hour,
+        "location": vendor.location,
+        "bookings": bookings_list
+    }
+
+# Update User Profile (Name and Phone)
+@app.put("/users/{user_id}")
+def update_user_profile(user_id: int, profile_data: UserUpdate, db: Session = Depends(get_db)):
+    # 1. Find the user
+    user = db.query(DBUser).filter(DBUser.id == user_id).first()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # 2. Update their data
+    user.full_name = profile_data.full_name
+    user.phone_number = profile_data.phone_number
+    
+    # 3. Save to Postgres
+    db.commit()
+    
+    return {"message": "Profile updated successfully!"}
+
+# Update Vendor Business Details
+@app.put("/vendors/{vendor_id}")
+def update_vendor_details(vendor_id: int, vendor_data: VendorUpdate, db: Session = Depends(get_db)):
+    # 1. Find the vendor profile
+    vendor = db.query(DBVendor).filter(DBVendor.id == vendor_id).first()
+    
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+        
+    # 2. Update their business data
+    vendor.name = vendor_data.name
+    vendor.description = vendor_data.description
+    vendor.price_per_hour = vendor_data.price_per_hour
+    vendor.location = vendor_data.location
+    
+    # 3. Save to Postgres
+    db.commit()
+    
+    return {"message": "Business details updated successfully!"}
