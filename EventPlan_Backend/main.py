@@ -106,8 +106,10 @@ def verify_password(plain_password: str, hashed_password: str):
 # 3. A quick helper function to "seed" the database with initial data
 def seed_database():
     db = SessionLocal()
-    # Check if users are empty
+    
     if db.query(DBUser).count() == 0:
+        print("🌱 Seeding the mega database for the presentation...")
+        
         # 1. Create Test Users
         test_client = DBUser(username="client1", password=get_password_hash("password123"), role="client", full_name="John Doe", phone_number="555-0199")
         test_vendor = DBUser(username="dj_snake", password=get_password_hash("password123"), role="vendor", full_name="Sam Smith", phone_number="555-0888")
@@ -115,35 +117,105 @@ def seed_database():
         db.commit()
 
         # 2. Create Categories
-        venues_cat = DBCategory(name="Venues")
-        djs_cat = DBCategory(name="DJs")
-        db.add_all([venues_cat, djs_cat, DBCategory(name="Cocktail Bars"), DBCategory(name="Photographers")])
+        cat_venues = DBCategory(name="Venues")
+        cat_djs = DBCategory(name="DJs")
+        cat_photo = DBCategory(name="Photographers")
+        cat_food = DBCategory(name="Catering")
+        db.add_all([cat_venues, cat_djs, cat_photo, cat_food])
         db.commit() 
         
-        # 3. Create Fake Vendors
-        dj_snake = DBVendor(name="DJ Snake-Eyes", description="Top 40 and EDM.", price_per_hour=100.0, location="Downtown Club", category_id=djs_cat.id, owner_id=test_vendor.id) # LINKED TO THE VENDOR USER!
-        
+        # 3. The Mega Vendor List
         fake_vendors = [
-            DBVendor(name="The Grand Ballroom", description="A beautiful 500-person hall.", price_per_hour=500.0, location="Northside", category_id=venues_cat.id),
-            DBVendor(name="Rustic Barn Retreat", description="Outdoor wedding venue.", price_per_hour=350.0, location="Countryside", category_id=venues_cat.id),
-            dj_snake, 
-            DBVendor(name="Vinyl Vintage", description="Classic 80s and 90s hits.", price_per_hour=80.0, location="West End", category_id=djs_cat.id)
+            # --- VENUES ---
+            DBVendor(
+                name="The Crystal Plaza", 
+                description="A glamorous ballroom perfect for large weddings and corporate galas.", 
+                price_per_hour=850.0, location="Downtown", category_id=cat_venues.id,
+                image_url="https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="Rustic Pines Barn", 
+                description="Beautiful outdoor wedding venue with a restored 1920s barn and string lights.", 
+                price_per_hour=400.0, location="Countryside", category_id=cat_venues.id,
+                image_url="https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="Oceanview Terrace", 
+                description="Breathtaking beachfront property with panoramic sunset views.", 
+                price_per_hour=600.0, location="Coastal", category_id=cat_venues.id,
+                image_url="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="The Industrial Loft", 
+                description="Exposed brick, huge windows, and modern vibes. Perfect for trendy parties.", 
+                price_per_hour=350.0, location="West End", category_id=cat_venues.id,
+                image_url="https://images.unsplash.com/photo-1519750783826-e2420f4d687f?auto=format&fit=crop&w=800&q=80"
+            ),
+            
+            # --- DJs ---
+            DBVendor(
+                name="DJ Snake-Eyes", 
+                description="Top 40, Hip Hop, and EDM. I bring the lights, the fog, and the energy.", 
+                price_per_hour=150.0, location="City Center", category_id=cat_djs.id, owner_id=test_vendor.id,
+                image_url="https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="Vinyl Vintage", 
+                description="Classic 80s, 90s hits, and disco. Strictly vinyl setup for that warm retro sound.", 
+                price_per_hour=100.0, location="West End", category_id=cat_djs.id,
+                image_url="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="Neon Nights Audio", 
+                description="Specializing in Synthwave, deep house, and underground electronic beats.", 
+                price_per_hour=120.0, location="Uptown", category_id=cat_djs.id,
+                image_url="https://images.unsplash.com/photo-1571266028243-cb40f54120eb?auto=format&fit=crop&w=800&q=80"
+            ),
+
+            # --- PHOTOGRAPHERS ---
+            DBVendor(
+                name="Lens & Light Studios", 
+                description="Candid, documentary-style wedding photography. Drone footage included.", 
+                price_per_hour=250.0, location="Uptown", category_id=cat_photo.id,
+                image_url="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="Golden Hour Captures", 
+                description="Natural light specialists. We make your outdoor events look like a movie.", 
+                price_per_hour=180.0, location="Coastal", category_id=cat_photo.id,
+                image_url="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="Flash & Frame", 
+                description="High-fashion, editorial style photography with full studio lighting setups.", 
+                price_per_hour=300.0, location="Downtown", category_id=cat_photo.id,
+                image_url="https://images.unsplash.com/photo-1551316679-9c6ae9dec224?auto=format&fit=crop&w=800&q=80"
+            ),
+
+            # --- CATERING ---
+            DBVendor(
+                name="Gourmet Bites", 
+                description="Luxury catering offering everything from sushi boats to carving stations.", 
+                price_per_hour=300.0, location="Metro Area", category_id=cat_food.id,
+                image_url="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="Sweet Treats Bakery", 
+                description="Custom wedding cakes, dessert bars, and gourmet donut walls.", 
+                price_per_hour=100.0, location="City Center", category_id=cat_food.id,
+                image_url="https://images.unsplash.com/photo-1464195244916-405fa0a82545?auto=format&fit=crop&w=800&q=80"
+            ),
+            DBVendor(
+                name="Fire & Smoke BBQ", 
+                description="Artisan barbecue, smoked briskets, and gourmet southern sides.", 
+                price_per_hour=150.0, location="Countryside", category_id=cat_food.id,
+                image_url="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80"
+            )
         ]
         db.add_all(fake_vendors)
         db.commit()
 
-        # 4. Create Fake Bookings
-        today = date.today()
-        fake_bookings = [
-            # Booked by the test client!
-            DBBooking(booked_date=today + timedelta(days=2), vendor_id=dj_snake.id, client_id=test_client.id), 
-            DBBooking(booked_date=today + timedelta(days=5), vendor_id=dj_snake.id, client_id=test_client.id), 
-        ]
-        db.add_all(fake_bookings)
-        db.commit()
-
     db.close()
-# Run the seed function when the file loads
 seed_database()
 
 @app.get("/")
